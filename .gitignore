@@ -1,0 +1,10 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Local scraped images (Keep the repo clean)
+scraped_images/
+scraped_images_local/
+
+# Environment files
+.env

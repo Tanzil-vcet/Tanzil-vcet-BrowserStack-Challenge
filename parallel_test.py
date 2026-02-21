@@ -20,48 +20,50 @@ def run_session(url, cap):
         
         driver.get("https://elpais.com/opinion/")
         
-        # 1. Scrape first 5 articles
+        # FIXED: Added the missing 'except' block for the cookie banner
+        try:
+            driver.find_element(By.ID, "didomi-notice-agree-button").click()
+        except:
+            pass # Banner didn't appear or already closed
+
         articles = driver.find_elements(By.TAG_NAME, "article")[:5]
         translated_headers = []
 
-        # Create a folder for images if it doesn't exist
         if not os.path.exists('scraped_images'):
             os.makedirs('scraped_images')
 
         for i, article in enumerate(articles):
-            # Fetch Title and Content in Spanish
             title_es = article.find_element(By.TAG_NAME, "h2").text
             
-            # 2. Download Images (only if running on a Desktop config to avoid mobile file issues)
-            if 'deviceName' not in cap:
-                try:
-                    img_url = article.find_element(By.TAG_NAME, "img").get_attribute("src")
+            try:
+                img_element = article.find_element(By.TAG_NAME, "img")
+                img_url = img_element.get_attribute("src")
+                if img_url and img_url.startswith("http"):
                     img_data = requests.get(img_url).content
                     filename = f"scraped_images/{session_name.replace(' ', '_')}_art_{i+1}.jpg"
                     with open(filename, 'wb') as f:
                         f.write(img_data)
-                except:
-                    pass
+            except:
+                pass 
 
-            # 3. Translate Headers
             title_en = translator.translate(title_es)
             translated_headers.append(title_en)
-            print(f"[{session_name}] Translated Title {i+1}: {title_en}")
+            print(f"[{session_name}] Translated Header {i+1}: {title_en}")
 
-        # 4. Analyze Translated Headers (Repeated Words > 2)
+        # HEADER ANALYSIS
         all_words = " ".join(translated_headers).lower().split()
         word_counts = {}
         for word in all_words:
             word = word.strip(".,!?:;\"")
-            if len(word) > 3: # Ignore stop words
+            if len(word) > 3:
                 word_counts[word] = word_counts.get(word, 0) + 1
 
-        print(f"\n[{session_name}] REPEATED WORDS:")
+        print(f"\n[{session_name}] Repeated Words (>2):")
         for word, count in word_counts.items():
             if count > 2:
                 print(f"  - {word}: {count}")
 
-        driver.execute_script('browserstack_executor: {"action": "setSessionStatus", "arguments": {"status":"passed", "reason": "Full Analysis Complete"}}')
+        driver.execute_script('browserstack_executor: {"action": "setSessionStatus", "arguments": {"status":"passed", "reason": "Logic verified!"}}')
     
     except Exception as e:
         print(f"Error in {session_name}: {e}")
@@ -71,8 +73,8 @@ def run_session(url, cap):
             driver.quit()
 
 if __name__ == "__main__":
-    USER_NAME = "YOUR_BROWSERSTACK_USERNAME" 
-    ACCESS_KEY = "YOUR_BROWSERSTACK_ACCESS_KEY" 
+    USER_NAME = "YOUR_USERNAME" 
+    ACCESS_KEY = "YOUR_ACCESS_KEY" 
     BS_URL = f"https://{USER_NAME}:{ACCESS_KEY}@hub-cloud.browserstack.com/wd/hub"
 
     capabilities = [
