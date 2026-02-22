@@ -12,6 +12,8 @@ def run_session(url, cap):
     
     try:
         options = ChromeOptions()
+        # FORCE SPANISH: Ensuring the browser requests the Spanish version
+        options.add_argument("--lang=es") 
         for key, value in cap.items():
             options.set_capability(key, value)
 
@@ -20,11 +22,11 @@ def run_session(url, cap):
         
         driver.get("https://elpais.com/opinion/")
         
-        # FIXED: Added the missing 'except' block for the cookie banner
+        # Accept Cookie Banner
         try:
             driver.find_element(By.ID, "didomi-notice-agree-button").click()
         except:
-            pass # Banner didn't appear or already closed
+            pass 
 
         articles = driver.find_elements(By.TAG_NAME, "article")[:5]
         translated_headers = []
@@ -33,8 +35,20 @@ def run_session(url, cap):
             os.makedirs('scraped_images')
 
         for i, article in enumerate(articles):
+            # 1. SCRAPE SPANISH TEXT
             title_es = article.find_element(By.TAG_NAME, "h2").text
-            
+            try:
+                # El País usually uses 'p' or a specific class for the lead text
+                content_es = article.find_element(By.TAG_NAME, "p").text
+            except:
+                content_es = "No content summary found."
+
+            # 2. PRINT SPANISH (Requirement)
+            print(f"[{session_name}] ARTICLE {i+1} - SPANISH")
+            print(f"Title: {title_es}")
+            print(f"Content: {content_es}\n")
+
+            # 3. DOWNLOAD IMAGES
             try:
                 img_element = article.find_element(By.TAG_NAME, "img")
                 img_url = img_element.get_attribute("src")
@@ -46,11 +60,13 @@ def run_session(url, cap):
             except:
                 pass 
 
+            # 4. TRANSLATE & PRINT ENGLISH (Requirement)
             title_en = translator.translate(title_es)
             translated_headers.append(title_en)
-            print(f"[{session_name}] Translated Header {i+1}: {title_en}")
+            print(f"[{session_name}] ARTICLE {i+1} - ENGLISH")
+            print(f"Translated Title: {title_en}\n" + "-"*20)
 
-        # HEADER ANALYSIS
+        # 5. HEADER ANALYSIS
         all_words = " ".join(translated_headers).lower().split()
         word_counts = {}
         for word in all_words:
@@ -63,7 +79,7 @@ def run_session(url, cap):
             if count > 2:
                 print(f"  - {word}: {count}")
 
-        driver.execute_script('browserstack_executor: {"action": "setSessionStatus", "arguments": {"status":"passed", "reason": "Logic verified!"}}')
+        driver.execute_script('browserstack_executor: {"action": "setSessionStatus", "arguments": {"status":"passed", "reason": "All requirements met!"}}')
     
     except Exception as e:
         print(f"Error in {session_name}: {e}")
@@ -71,6 +87,7 @@ def run_session(url, cap):
     finally:
         if 'driver' in locals():
             driver.quit()
+
 
 if __name__ == "__main__":
     USER_NAME = "YOUR_USERNAME" 
